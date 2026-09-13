@@ -362,8 +362,8 @@
           </div>
         </div>
         <div class="mbs-hb-hero__btns">
-          <a href="https://n1964417.yclients.com/company/453962/personal/select-master?o=s18152796"
-             target="_blank" rel="noopener noreferrer" class="mbs-hb-hero__btn-primary js-mbs-hb-booking-modal">
+          <a href="#mbs-hb-booking-modal"
+             class="mbs-hb-hero__btn-primary js-mbs-hb-booking-modal">
             <i class="ph ph-calendar-check"></i>
             Записаться онлайн
           </a>
@@ -402,6 +402,7 @@
     var previousActiveElement = null;
     var lockedScrollY = 0;
     var previousBodyStyles = {};
+    var bookingHash = '#mbs-hb-booking-modal';
 
     function resetBookingDraft() {
       if (!widgetRoot) return;
@@ -519,6 +520,9 @@
       window.setTimeout(function () {
         modal.hidden = true;
         unlockPageScroll();
+        if (window.location.hash === bookingHash && window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
         if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
           previousActiveElement.focus();
         }
@@ -542,5 +546,12 @@
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape' && !modal.hidden) closeModal();
     });
+
+    function openModalFromHash() {
+      if (window.location.hash === bookingHash) openModal();
+    }
+
+    window.addEventListener('hashchange', openModalFromHash);
+    openModalFromHash();
   })();
 </script>
