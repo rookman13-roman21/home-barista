@@ -1570,7 +1570,7 @@
             </div>
           </div>
           <div class="mbs-hb-hero__btns">
-            <a href="https://n1964417.yclients.com/company/453962/personal/select-master?o=s18152796" target="_blank" rel="noopener noreferrer" class="mbs-hb-hero__btn-primary js-mbs-hb-booking-modal">
+            <a href="#mbs-hb-booking-modal" class="mbs-hb-hero__btn-primary js-mbs-hb-booking-modal">
               <i class="ph ph-calendar-check"></i>
               Записаться онлайн
             </a>
@@ -1713,7 +1713,7 @@
         <div class="mbs-hb-prog__cta-text">
           Программа <span>подстраивается под ваши цели</span> — скажите тренеру, что вас интересует, и занятие пройдёт именно так, как вам нужно.
         </div>
-        <a href="https://n1964417.yclients.com/company/453962/personal/select-master?o=s18152796" target="_blank" rel="noopener noreferrer" class="mbs-hb-prog__cta-btn js-mbs-hb-booking-modal">
+        <a href="#mbs-hb-booking-modal" class="mbs-hb-prog__cta-btn js-mbs-hb-booking-modal">
           <i class="ph ph-calendar-check"></i>
           Записаться на мастер-класс
         </a>
@@ -1760,7 +1760,7 @@
 
       <div class="mbs-hb-price__cta-wrap">
         <div class="mbs-hb-price__cta-text">Хотите прийти вдвоём? Нажмите «Записаться онлайн» и выберите подходящий формат участия.</div>
-        <a href="https://n1964417.yclients.com/company/453962/personal/select-master?o=s18152796" target="_blank" rel="noopener noreferrer" class="mbs-hb-price__btn js-mbs-hb-booking-modal">
+        <a href="#mbs-hb-booking-modal" class="mbs-hb-price__btn js-mbs-hb-booking-modal">
           <i class="ph ph-calendar-check"></i>
           Записаться онлайн
         </a>
@@ -1927,7 +1927,7 @@
           </p>
         </div>
         <div class="mbs-hb-cta__actions">
-          <a href="https://n1964417.yclients.com/company/453962/personal/select-master?o=s18152796" target="_blank" rel="noopener noreferrer" class="mbs-hb-cta__btn-primary js-mbs-hb-booking-modal">
+          <a href="#mbs-hb-booking-modal" class="mbs-hb-cta__btn-primary js-mbs-hb-booking-modal">
             <i class="ph ph-calendar-check"></i>
             Записаться онлайн
           </a>
@@ -1991,6 +1991,7 @@
       var previousActiveElement = null;
       var lockedScrollY = 0;
       var previousBodyStyles = {};
+      var bookingHash = '#mbs-hb-booking-modal';
 
       function resetBookingDraft() {
         if (!widgetRoot) return;
@@ -2108,6 +2109,9 @@
         window.setTimeout(function () {
           modal.hidden = true;
           unlockPageScroll();
+          if (window.location.hash === bookingHash && window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
           if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
             previousActiveElement.focus();
           }
@@ -2131,6 +2135,13 @@
       document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape' && !modal.hidden) closeModal();
       });
+
+      function openModalFromHash() {
+        if (window.location.hash === bookingHash) openModal();
+      }
+
+      window.addEventListener('hashchange', openModalFromHash);
+      openModalFromHash();
     })();
   </script>
 
