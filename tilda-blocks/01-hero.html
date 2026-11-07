@@ -425,6 +425,8 @@
       }
     }
 
+    var bookingLoadAttempt = 0;
+
     function loadBookingWidget() {
       if (!widgetRoot) return;
       resetBookingDraft();
@@ -433,18 +435,27 @@
       var existing = document.querySelector('script[data-course-booking-widget-script]');
       if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
 
+      var attempt = ++bookingLoadAttempt;
       var urls = [
         'https://api.barista-school.ru/course-booking-widget.js?v=course-calendar-sync-20260818',
-        'https://api.barista-school.ru/basic-barista-widget.js?v=course-calendar-sync-20260818',
-        'https://159-194-202-120.sslip.io/api-fallback/basic-barista-widget.js?v=course-calendar-sync-20260818'
+        'https://api.barista-school.ru/basic-barista-widget.js?v=course-calendar-sync-20260818'
       ];
       var index = 0;
 
       function failWidget() {
-        widgetRoot.innerHTML = '<div style="padding:48px 20px;text-align:center;color:#CC2841;font-weight:800">Не удалось загрузить онлайн-запись. Попробуйте обновить страницу или оставьте заявку.</div>';
+        var failRoot = widgetRoot;
+        if (!failRoot) return;
+        failRoot.innerHTML =
+          '<div style="padding:40px 20px;text-align:center;background:#fff;border-radius:24px;color:#1F1F1F;font-family:Mulish,Arial,sans-serif;font-weight:700">Онлайн-запись сейчас не открылась. Напишите нам, и мы подберём удобное время.' +
+          '<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:16px">' +
+          '<a href="https://t.me/Moscow_barista_school" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border-radius:999px;font-family:Mulish,Arial,sans-serif;font-size:15px;font-weight:800;text-decoration:none;cursor:pointer;background:#4F883E;color:#fff">Написать в Telegram</a>' +
+          '<button type="button" data-booking-retry style="display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 20px;border-radius:999px;font-family:Mulish,Arial,sans-serif;font-size:15px;font-weight:800;text-decoration:none;cursor:pointer;border:1px solid #B6D8AB;background:#fff;color:#417033">Попробовать снова</button></div></div>';
+        var retry = failRoot.querySelector('[data-booking-retry]');
+        if (retry) retry.addEventListener('click', loadBookingWidget);
       }
 
       function loadNext() {
+        if (attempt !== bookingLoadAttempt) return;
         if (index >= urls.length) {
           failWidget();
           return;
@@ -455,13 +466,14 @@
           if (script.parentNode) script.parentNode.removeChild(script);
           index += 1;
           loadNext();
-        }, 3000);
+        }, 12000);
 
         script.src = urls[index];
         script.async = true;
         script.dataset.courseBookingWidgetScript = '1';
         script.onload = function () {
           clearTimeout(timer);
+          bookingLoadAttempt += 1;
         };
         script.onerror = function () {
           clearTimeout(timer);
