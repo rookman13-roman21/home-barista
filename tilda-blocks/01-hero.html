@@ -500,15 +500,30 @@
     }
 
     function watchIconFont() {
-      if (!document.fonts || !document.fonts.forEach) return;
+      /* Как в общем виджете (0766): без FontFace API — сразу запасные символы; пришедший позже шрифт снимает запасной режим. */
+      var noIcons = 'mbs-hb-booking-modal--no-icons';
+      if (!document.fonts || !document.fonts.forEach) {
+        modal.classList.add(noIcons);
+        return;
+      }
       /* check() отвечает true, когда стилей нет совсем, поэтому ищем сам загруженный шрифт */
       var loaded = function () {
         var ok = false;
         document.fonts.forEach(function (face) { if (/Phosphor/.test(face.family) && face.status === 'loaded') ok = true; });
         return ok;
       };
-      if (document.fonts.load) document.fonts.load('18px Phosphor').catch(function () {});
-      setTimeout(function () { if (!loaded()) modal.classList.add('mbs-hb-booking-modal--no-icons'); }, 5000);
+      var restoreIcons = function () { if (loaded()) modal.classList.remove(noIcons); };
+      var requestFont = function () {
+        if (!document.fonts.load) return;
+        document.fonts.load('18px Phosphor').then(restoreIcons).catch(function () {});
+      };
+      requestFont();
+      if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', restoreIcons);
+      setTimeout(function () {
+        if (loaded()) return;
+        modal.classList.add(noIcons);
+        requestFont();
+      }, 5000);
     }
 
     modal.querySelectorAll('[data-booking-share]').forEach(function (button) {
