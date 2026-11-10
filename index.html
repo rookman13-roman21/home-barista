@@ -1956,11 +1956,45 @@
 
   </main><!-- /#main-content -->
 
+  <style>
+    /* Кнопки управления и положение окна записи — как на /barista_courses (тред 0767). */
+    .mbs-hb-booking-modal { overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .mbs-hb-booking-modal__dialog { margin:auto; max-height:none; overflow:visible; }
+    .mbs-hb-booking-modal__controls { position:absolute; top:12px; right:12px; z-index:2; display:flex; gap:8px; }
+    .mbs-hb-booking-modal__control { position:relative; flex:0 0 auto; box-sizing:border-box; width:36px; height:36px; padding:0; border:0; border-radius:50%; background:rgba(0,0,0,.06); color:#1F1F1F; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; font-family:'Mulish',sans-serif; font-size:18px; line-height:1; transition:background-color .15s ease, color .15s ease; }
+    .mbs-hb-booking-modal__control:hover { background:rgba(0,0,0,.10); }
+    .mbs-hb-booking-modal__control:focus-visible { outline:2px solid #417033; outline-offset:2px; }
+    .mbs-hb-booking-modal__control i { font-size:18px; line-height:1; }
+    .mbs-hb-booking-modal__control.is-copied { color:#417033; }
+    .mbs-hb-booking-modal__fallback { display:none; font-weight:800; }
+    .mbs-hb-booking-modal--no-icons .mbs-hb-booking-modal__control i { display:none; }
+    .mbs-hb-booking-modal--no-icons .mbs-hb-booking-modal__fallback { display:inline; }
+    .mbs-hb-booking-modal--no-icons .mbs-hb-booking-modal__control--copy { width:auto; padding:0 12px; border-radius:999px; font-size:13px; }
+    .mbs-hb-booking-modal__toast { position:fixed; left:50%; bottom:24px; z-index:100000; transform:translateX(-50%); max-width:calc(100% - 32px); padding:12px 16px; border-radius:999px; color:#fff; background:#1F1F1F; font-size:14px; font-weight:800; line-height:1.2; text-align:center; opacity:0; pointer-events:none; transition:opacity .2s ease; }
+    .mbs-hb-booking-modal__toast.is-visible { opacity:1; }
+    /* id нужен, чтобы перекрыть правило отступа шапки из самого виджета. */
+    #mbs-hb-booking-modal .bbb-top { padding-right:104px; }
+    @media (max-width: 640px) {
+      /* Карточка посередине экрана; если шаг выше экрана — начинается сверху и прокручивается (auto-поля не дают обрезать верх). */
+      .mbs-hb-booking-modal { align-items:center; padding:max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); }
+      .mbs-hb-booking-modal__dialog { width:100%; max-height:none; }
+      .mbs-hb-booking-modal__controls { top:10px; right:10px; }
+      .mbs-hb-booking-modal__control { width:34px; height:34px; }
+      .mbs-hb-booking-modal__control::before { content:''; position:absolute; inset:-5px -4px; }
+      /* На телефоне кнопки стоят на одной линии с логотипом, название и адрес — строкой ниже во всю ширину. */
+      #mbs-hb-booking-modal .bbb-top { padding-right:14px; }
+    }
+  </style>
   <div class="mbs-hb-booking-modal" id="mbs-hb-booking-modal" hidden>
     <div class="mbs-hb-booking-modal__dialog" role="dialog" aria-modal="true" aria-label="Онлайн запись на курс Домашний бариста" style="width:min(100%, 800px); padding:0; border:0; background:transparent; box-shadow:none">
-      <button class="mbs-hb-booking-modal__close" type="button" aria-label="Закрыть окно онлайн-записи" style="z-index:2">
-        <i class="ph ph-x"></i>
-      </button>
+      <div class="mbs-hb-booking-modal__controls">
+        <button class="mbs-hb-booking-modal__control mbs-hb-booking-modal__control--copy" type="button" data-booking-share aria-label="Скопировать ссылку на онлайн-запись" title="Скопировать ссылку">
+          <i class="ph ph-copy" aria-hidden="true"></i><span class="mbs-hb-booking-modal__fallback" aria-hidden="true">Ссылка</span>
+        </button>
+        <button class="mbs-hb-booking-modal__control" type="button" data-booking-close aria-label="Закрыть окно онлайн-записи">
+          <i class="ph ph-x" aria-hidden="true"></i><span class="mbs-hb-booking-modal__fallback" aria-hidden="true">×</span>
+        </button>
+      </div>
       <div data-course-booking-widget data-course-slug="home-barista" aria-live="polite">
         <div class="bbb-loading">Загружаем расписание…</div>
       </div>
@@ -1986,12 +2020,90 @@
       var modal = document.getElementById('mbs-hb-booking-modal');
       if (!modal) return;
 
-      var closeButton = modal.querySelector('.mbs-hb-booking-modal__close');
+      var closeButton = modal.querySelector('[data-booking-close]');
       var widgetRoot = modal.querySelector('[data-course-booking-widget]');
       var previousActiveElement = null;
       var lockedScrollY = 0;
       var previousBodyStyles = {};
       var bookingHash = '#mbs-hb-booking-modal';
+
+      // Копирование ссылки на онлайн-запись — как на /barista_courses (тред 0767).
+      var shareHash = '#online-booking';
+      var toastTimer = null;
+      var copyResetTimer = null;
+      var toast = document.createElement('div');
+      toast.className = 'mbs-hb-booking-modal__toast';
+      toast.setAttribute('aria-live', 'polite');
+      modal.appendChild(toast);
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('is-visible');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toast.classList.remove('is-visible'); }, 2200);
+      }
+
+      function buildShareUrl() {
+        var url = new URL(window.location.href);
+        url.searchParams.set('online_booking', '1');
+        url.hash = 'online-booking';
+        return url.toString();
+      }
+
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text);
+        return new Promise(function (resolve, reject) {
+          var textarea = document.createElement('textarea');
+          textarea.value = text;
+          textarea.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+          modal.appendChild(textarea);
+          textarea.focus();
+          textarea.select();
+          try {
+            document.execCommand('copy') ? resolve() : reject(new Error('copy failed'));
+          } catch (err) {
+            reject(err);
+          }
+          modal.removeChild(textarea);
+        });
+      }
+
+      function setCopyState(button, copied) {
+        var icon = button.querySelector('i');
+        button.classList.toggle('is-copied', copied);
+        if (icon) icon.className = copied ? 'ph ph-check' : 'ph ph-copy';
+        button.setAttribute('aria-label', copied ? 'Ссылка скопирована' : 'Скопировать ссылку на онлайн-запись');
+      }
+
+      function copyBookingLink(event) {
+        var button = event.currentTarget;
+        var url = buildShareUrl();
+        copyText(url)
+          .then(function () {
+            setCopyState(button, true);
+            showToast('Ссылка скопирована');
+            if (copyResetTimer) clearTimeout(copyResetTimer);
+            copyResetTimer = setTimeout(function () { setCopyState(button, false); }, 2000);
+          })
+          .catch(function () { showToast('Скопируйте ссылку вручную: ' + url); });
+      }
+
+      function watchIconFont() {
+        if (!document.fonts || !document.fonts.forEach) return;
+        /* check() отвечает true, когда стилей нет совсем, поэтому ищем сам загруженный шрифт */
+        var loaded = function () {
+          var ok = false;
+          document.fonts.forEach(function (face) { if (/Phosphor/.test(face.family) && face.status === 'loaded') ok = true; });
+          return ok;
+        };
+        if (document.fonts.load) document.fonts.load('18px Phosphor').catch(function () {});
+        setTimeout(function () { if (!loaded()) modal.classList.add('mbs-hb-booking-modal--no-icons'); }, 5000);
+      }
+
+      modal.querySelectorAll('[data-booking-share]').forEach(function (button) {
+        button.addEventListener('click', copyBookingLink);
+      });
+      watchIconFont();
 
       function resetBookingDraft() {
         if (!widgetRoot) return;
@@ -2148,12 +2260,11 @@
         if (event.key === 'Escape' && !modal.hidden) closeModal();
       });
 
-      function openModalFromHash() {
-        if (window.location.hash === bookingHash) openModal();
-      }
+      function openModalFromHash() { if (window.location.hash === bookingHash || window.location.hash === shareHash) openModal(); }
 
       window.addEventListener('hashchange', openModalFromHash);
       openModalFromHash();
+      try { if (new URLSearchParams(window.location.search).get('online_booking') === '1') openModal(); } catch (err) {}
     })();
   </script>
 
